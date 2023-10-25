@@ -1,4 +1,5 @@
-.venv/*
-.vscode/*
-.dataset/ogbl_ddi
-.dataset/ogbn_arxiv
+.venv
+.vscode
+__pycache__
+dataset/ogbl_ddi
+dataset/ogbn_arxiv
