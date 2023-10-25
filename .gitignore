@@ -1,2 +1,4 @@
 .venv/*
 .vscode/*
+.dataset/ogbl_ddi
+.dataset/ogbn_arxiv
