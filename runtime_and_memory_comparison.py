@@ -1,3 +1,49 @@
+import ogb
+import scipy.sparse as sp
+import networkx as nx
+import numpy as np
+import sys
+from ogb.linkproppred import LinkPropPredDataset, NodePropPredDataset
+from utils import normal_equations, uniform_sampling_rows, lev_score_sampling, normalize_adj, generate_dataset, generate_dataset_syn
+%load_ext memory_profiler
+
+input = sys.argv[1]
+
+if input == "house":
+    X = np.loadtxt("house/X.csv", delimiter = ",", skiprows = 1)
+    y = np.loadtxt("house/y.csv", delimiter = ",", skiprows = 1)
+    A_G = nx.adjacency_matrix(nx.read_graphml("house/graph.graphml"))
+    range_start = 15000
+    range_end = 15200
+    A_G = A_G[range_start:range_end, range_start:range_end]
+    A_G = normalize_adj(A_G)
+    X = X[range_start:range_end]
+    X = X/np.linalg.norm(X)
+    y = y[range_start:range_end]
+    num_nodes = A_G.shape[0]
+
+elif input == "ogbl-ddi":
+    dataset = LinkPropPredDataset(name = "ogbl-ddi")
+    graph = dataset[0] # graph: library-agnostic graph object
+    num_nodes = graph["num_nodes"]
+    A_G = sp.csr_array((np.ones(len(graph["edge_index"][0])), (graph["edge_index"][0], graph["edge_index"][1])), shape=(num_nodes, num_nodes))
+    X, y, w = generate_dataset_syn(A_G, 1, 50, 1, 1, num_nodes, 100)
+
+elif input == "ogbn-arxiv":
+    dataset = NodePropPredDataset(name = "ogbn-arxiv" )
+    graph, label = dataset[0] # graph: library-agnostic graph object
+    num_nodes = graph["num_nodes"]
+    A_G = sp.csr_array((np.ones(len(graph["edge_index"][0])), (graph["edge_index"][0], graph["edge_index"][1])), shape=(num_nodes, num_nodes))
+    X = graph["node_feat"]
+    y = label
+
+elif input == "generated-data":
+    n = [50000, 100000, 150000]
+    p = 500
+    num_nodes = n[0]
+    %memit A_G = np.random.normal(1, 1, size=(num_nodes, num_nodes))
+    A_G = sp.csr_array(A_G)
+    X, y, w = generate_dataset(A_G, 1, 1, 1, 1, num_nodes, p)
 
 
 sketch_size = np.ceil(np.log(num_nodes))
@@ -17,7 +63,7 @@ print("Regression with full AX:", elapsed1 - start1)
 
 print("Method 2: Regression with Uniformly Sampled (AX, y)")
 start2 = timer()
-
+    
 %memit A_uni_sampled, sampled_idx = uniform_sampling_rows(A_G, budget)
 %memit A_uni_sampled = A_uni_sampled @ X
 w_uni = normal_equations(A_uni_sampled, y[sampled_idx])
