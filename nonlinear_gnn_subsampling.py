@@ -206,7 +206,7 @@ for trial in np.arange(num_trials):
         MSE_ApproxLev_minVar_mat[trial, idx] = run_GCN(data_mat, approx_lev_minvar_edge_index, approx_lev_minvar_edge_weight,
                                                        scaled_labels3, test_mask, data_mat, edge_index, edge_weight, labels, hidden_dim, epochs)
 
-        #  6. GraphSage + GCN------------------------------------------------------------------------------
+        #  6. GraphSage based sampling + GCN------------------------------------------------------------------------------
         A_GraphSage, A_mask, col_idx_list = GraphSage(A_G, budget_vec[idx])
         sage_labels = np.zeros(num_nodes)
         s_adj_sg = pygutils.dense_to_sparse(torch.from_numpy(A_GraphSage))
@@ -220,7 +220,7 @@ for trial in np.arange(num_trials):
         MSE_GraphSage_mat[trial, idx] = run_GCN(data_mat, GraphSage_edge_index, GraphSage_edge_weight,
                                                 sage_labels, test_mask, data_mat, edge_index, edge_weight, labels, hidden_dim, epochs)
 
-        #  7. GraphSaint + GCN------------------------------------------------------------------------------
+        #  7. GraphSaint based sampling + GCN------------------------------------------------------------------------------
         A_GraphSaint, X_GraphSaint, sampled_idx5 = GraphSaint(
             A_G, data_mat, budget_vec[idx])
         saint_labels = np.zeros(num_nodes)
@@ -260,12 +260,12 @@ mean_MSE_ApproxLev_minVar_vec = np.mean((MSE_ApproxLev_minVar_mat), axis=0)
 std_MSE_ApproxLev_minVar_vec = 1.96 * \
     np.std((MSE_ApproxLev_minVar_mat), axis=0)/np.sqrt(num_trials)
 
-'''6. MSE via GraphSage'''
+'''6. MSE via GraphSage based sampling'''
 mean_MSE_GraphSage_vec = np.mean((MSE_GraphSage_mat), axis=0)
 std_MSE_GraphSage_vec = 1.96 * \
     np.std((MSE_GraphSage_mat), axis=0)/np.sqrt(num_trials)
 
-'''7. MSE via GraphSaint'''
+'''7. MSE via GraphSaint based sampling'''
 mean_MSE_GraphSaint_vec = np.mean((MSE_GraphSaint_mat), axis=0)
 std_MSE_GraphSaint_vec = 1.96 * \
     np.std((MSE_GraphSaint_mat), axis=0)/np.sqrt(num_trials)
