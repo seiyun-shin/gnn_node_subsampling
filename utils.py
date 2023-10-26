@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from scipy.stats import cauchy
+from torch_geometric.data import Data
 from torch_geometric.nn import GCNConv
 
 
@@ -202,6 +203,7 @@ def lev_exact(A_mat):
         lev_vec = np.sum(U_mat ** 2, axis=1)
     return lev_vec
 
+
 def lev_approx(A_mat, data_mat, eps):
     '''
     Compute Approximate Leverage Scores
@@ -231,6 +233,7 @@ def lev_approx(A_mat, data_mat, eps):
     lev_vec *= ((1+eps) ** 2)/((1-eps) ** 2)
     return lev_vec
 
+
 def lev_approx2(A_mat, eps):
     '''
     Compute Approximate Leverage Scores
@@ -259,6 +262,7 @@ def lev_approx2(A_mat, eps):
         lev_vec = np.sum(U_mat ** 2, axis=1)
     lev_vec *= ((1+eps) ** 2)/((1-eps) ** 2)
     return lev_vec
+
 
 def lev_score_sampling(A_mat, sketch_size, prob_vec):
     '''
@@ -381,6 +385,7 @@ def normalize_adj(A_G):
     A_G = diag_degree @ (A_G + sp.identity(num_nodes)) @ diag_degree
     return A_G
 
+
 def generate_dataset(A_mat, mu_X, sigma_X, mu_w, sigma_w, n, p):
     '''
     Generate a synthetic dataset (linearly-regressed label with an additive perturbation)
@@ -417,6 +422,7 @@ def generate_dataset(A_mat, mu_X, sigma_X, mu_w, sigma_w, n, p):
     else:
         y = w.T @ (X.T @ A_mat) + e
     return X, y, w
+
 
 def generate_dataset_syn(A_mat, mu_X, sigma_X, mu_w, sigma_w, n, p):
     '''
@@ -481,3 +487,78 @@ def RSE(A_mat, data_mat, labels, w_hat):
 
     err = numerator / denominator
     return err
+
+# RUNNING GCN
+
+
+def run_GCN(X, edge_index, edge_weight, Y, test_mask, base_X, base_edge_index, base_edge_weight, base_Y, hidden_dim, epochs):
+    num_node_features = base_X.shape[1]
+    train_mask = np.ones(base_X.shape[0], dtype=bool)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = GCN(num_node_features, hidden_dim).to(device)
+    data = Data(x=torch.from_numpy(X.astype(np.float32)), edge_index=edge_index, edge_weight=edge_weight.float(),
+                y=torch.from_numpy(Y), train_mask=train_mask).to(device)
+    base_data = Data(x=torch.from_numpy(base_X.astype(np.float32)), edge_index=base_edge_index, edge_weight=base_edge_weight.float(),
+                     y=torch.from_numpy(base_Y), test_mask=test_mask).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.1, weight_decay=5e-4)
+    loss_fn = nn.MSELoss()
+    min_mse = float('inf')
+    for epoch in range(epochs):
+        # Train
+        model.train()
+        optimizer.zero_grad()
+        out = model(data)
+        # loss = F.nll_loss(out[data.train_mask], data.y[data.train_mask])
+        # y_flattened = torch.unsqueeze(data.y, dim=-1)
+        outs = torch.squeeze(out)
+        loss = loss_fn(outs[data.train_mask], data.y[data.train_mask].float())
+        loss.backward()
+        optimizer.step()
+
+        # Evaluating on Test
+        test_out = model(base_data)
+        test_outs = torch.squeeze(test_out)
+        model.eval()
+        test_mse = loss_fn(
+            test_outs[base_data.test_mask], base_data.y[base_data.test_mask].float())
+
+        mse_val = float(test_mse)
+        min_mse = min(min_mse, mse_val)
+        # print("Test MSE at this epoch:", mse_val)
+    return min_mse
+
+
+def run_GCN_linear(X, edge_index, edge_weight, Y, test_mask, base_X, base_edge_index, base_edge_weight, base_Y, hidden_dim, epochs):
+    num_node_features = base_X.shape[1]
+    train_mask = np.ones(base_X.shape[0], dtype=bool)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = GCN_linear(num_node_features, hidden_dim).to(device)
+    data = Data(x=torch.from_numpy(X.astype(np.float32)), edge_index=edge_index, edge_weight=edge_weight.float(),
+                y=torch.from_numpy(Y), train_mask=train_mask).to(device)
+    base_data = Data(x=torch.from_numpy(base_X.astype(np.float32)), edge_index=base_edge_index, edge_weight=base_edge_weight.float(),
+                     y=torch.from_numpy(base_Y), test_mask=test_mask).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.1, weight_decay=5e-4)
+    loss_fn = nn.MSELoss()
+    min_mse = float('inf')
+    for epoch in range(epochs):
+        # Train
+        model.train()
+        optimizer.zero_grad()
+        out = model(data)
+        # loss = F.nll_loss(out[data.train_mask], data.y[data.train_mask])
+        # y_flattened = torch.unsqueeze(data.y, dim=-1)
+        outs = torch.squeeze(out)
+        loss = loss_fn(outs[data.train_mask], data.y[data.train_mask].float())
+        loss.backward()
+        optimizer.step()
+
+        # Evaluating on Test
+        test_out = model(base_data)
+        test_outs = torch.squeeze(test_out)
+        model.eval()
+        test_mse = loss_fn(
+            test_outs[base_data.test_mask], base_data.y[base_data.test_mask].float())
+        mse_val = float(test_mse)
+        min_mse = min(min_mse, mse_val)
+        # print("Test MSE at this epoch:", mse_val)
+    return min_mse
