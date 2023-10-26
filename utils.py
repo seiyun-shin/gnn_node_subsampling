@@ -405,16 +405,17 @@ def generate_dataset(A_mat, mu_X, sigma_X, mu_w, sigma_w, n, p):
         w: p-by-1 weight vector
     '''
 
-    # Generate x as an array of `n` samples which can take a value between 0 and 100
-    # random.multivariate_normal(mean, cov, size=None, check_valid='warn', tol=1e-8)
+    # Generate X as an array of `n` samples having `p` dimension according to Gaussian distribution
     X = np.random.normal(mu_X, sigma_X, size=(n, p))
     if p == 1:
         X = np.ravel(X)
     X /= np.linalg.norm(X)
+
+    # Generate w as an array of `p` dimension according to Gaussian distribution
     w = np.random.normal(mu_w, sigma_w, p)  # X.shape[1] in general
     w /= np.linalg.norm(w)
-    # Generate the random error of n samples, with a random value from a normal distribution, with a standard
-    # deviation provided in the function argument
+    
+    # Generate the random error of n samples, with a random value from a normal distribution, with a standard deviation provided in the function argument
     e = np.random.randn(n) * 1000
     # Calculate `y` according to the equation discussed
     if p == 1:
@@ -443,14 +444,15 @@ def generate_dataset_syn(A_mat, mu_X, sigma_X, mu_w, sigma_w, n, p):
         w: p-by-1 weight vector
     '''
 
-    # Generate x as an array of `n` samples which can take a value between 0 and 100
-    # random.multivariate_normal(mean, cov, size=None, check_valid='warn', tol=1e-8)
+    # Generate X as an array of `n` samples having `p` dimension according to Cauchy distribution
     X = cauchy.rvs(loc=10*mu_X, scale=10*sigma_X, size=(n, p))
     if p == 1:
         X = np.ravel(X)
+
+    # Generate w as an array of `p` dimension according to Cauchy distribution
     w = cauchy.rvs(loc=10*mu_w, scale=10*sigma_w, size=p)
-    # Generate the random error of n samples, with a random value from a normal distribution, with a standard
-    # deviation provided in the function argument
+    
+    # Generate the random error of n samples, with a random value from a normal distribution, with a standard deviation provided in the function argument
     e = np.random.normal(1, 10, n)
     # Calculate `y` according to the equation discussed
     if p == 1:
@@ -461,7 +463,6 @@ def generate_dataset_syn(A_mat, mu_X, sigma_X, mu_w, sigma_w, n, p):
 
 
 # METRICS
-
 
 def MSE(A_mat, data_mat, labels, w_hat):
     '''Returns calculated value of mse'''
