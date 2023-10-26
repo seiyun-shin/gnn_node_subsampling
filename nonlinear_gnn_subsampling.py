@@ -82,7 +82,6 @@ data_mat = X
 labels = y
 
 
-# fix the budget for the leverage-score sampling
 sketch_size_vec = np.ceil(np.multiply(tot_budget_vec, num_nodes))
 print(sketch_size_vec)
 budget_vec = np.multiply(tot_budget_vec, 1)
@@ -107,49 +106,31 @@ MSE_GraphSaint_mat = np.zeros((num_trials, len_budget))
 s_adj = pygutils.dense_to_sparse(torch.from_numpy(A_G))
 edge_index = s_adj[0]
 edge_weight = s_adj[1]
-# test_mask = np.ones(len(data_mat), dtype = bool)
 test_mask = np.full(num_nodes, True)
 MSE_OLS = run_GCN(data_mat, edge_index, edge_weight, labels, test_mask,
                   data_mat, edge_index, edge_weight, labels, hidden_dim, epochs)
 
 '''compute the exact leverage score'''
 exact_lev_score = lev_exact(A_G @ data_mat)
-# sketch_size = math.ceil(np.log(num_nodes)/(0.1 ** 2)) #fix the budget for the leverage-score sampling
 
-# fix the budget for the leverage-score sampling
 sketch_size_vec_original = np.ceil(np.multiply(tot_budget_vec, num_nodes))
 budget_vec_original = np.multiply(tot_budget_vec, 1)
 
 # Assign variables to the y-axis part of the curve
 for trial in np.arange(num_trials):
     print("Trial : " + str(trial))
-    #     sketch_size_vec = deepcopy(sketch_size_vec_original)
-    #     budget_vec = deepcopy(budget_vec_original)
-    #     print(budget_vec)
 
     for idx in idx_vec:
-        #         sketch_size_vec[idx] += np.ceil(0.3*tot_budget_vec[idx]/num_nodes) #fix the budget for the leverage-score sampling
-        #         budget_vec[idx] -= np.ceil(0.3*tot_budget_vec[idx])
-        #         print("Idx=", idx)
-        #         print("Sketch size vec=", sketch_size_vec)
-        #         print("Budget vec", budget_vec)
         print("Budget : " + str(idx) + " " +
               str(sketch_size_vec[idx]/num_nodes))
         print(
             "------------------------------------------------------------------------------")
-        '''MSE via full AX'''
         #  1. GCN with exact AX------------------------------------------------------------------------------
         MSE_OLS_mat[trial, idx] = MSE_OLS
-        # R2_OLS_mat[trial, idx] = R2_OLS
-        # RSE_OLS_mat[trial, idx] = RSE_OLS
-
-        '''MSE via Uniformly sampled A + X'''
-        A_uni_sampled, sampled_idx = uniform_sampling_rows(
-            A_G, tot_budget_vec[idx])
-        # w_uni = normal_equations(A_uni_sampled[sampled_idx, :] @ data_mat, labels[sampled_idx])
-        # MSE_Uniform = mean_squared_error(labels, w_uni.T @ (data_mat.T @ A_G))
 
         #  2. UNI SAMPLED GCN------------------------------------------------------------------------------
+        A_uni_sampled, sampled_idx = uniform_sampling_rows(
+            A_G, tot_budget_vec[idx])
         s_adj = pygutils.dense_to_sparse(torch.from_numpy(A_uni_sampled))
         uni_edge_index = s_adj[0]
         uni_edge_weight = s_adj[1]
@@ -162,16 +143,7 @@ for trial in np.arange(num_trials):
         MSE_Uniform_mat[trial, idx] = run_GCN(data_mat, uni_edge_index, uni_edge_weight,
                                               uni_labels, test_mask, data_mat, edge_index, edge_weight, labels, hidden_dim, epochs)
 
-        # form of edge index (500, 4267), (1, 300), ...  -> adjacency matrix dimension: 4267x4267
-        # label -> sampling 안된 idx에 해당하는 entryvalue를 0으로 세팅 A[sample 안된 row, :]@X = 0 W = 0
-
-        # R2_Uniform_mat[trial, idx] = r2_score(labels, w_uni.T @ (data_mat.T @ A_G))
-        # RSE_Uniform = RSE(A_G, data_mat, labels, w_uni)
-        # RSE_Uniform_mat[trial, idx] = RSE_Uniform
-
-#         print("Baseline budget exploitation:", num_samples_base)
-
-        '''MSE via exact leverage-score sampling'''
+        #  3. EXACT LEV-SCORE SAMPLED GCN------------------------------------------------------------------------------
         sampled_rows1, exact_lev_A_G, scaling_vec1 = lev_score_sampling(
             A_G, sketch_size_vec[idx], exact_lev_score)
         scaled_labels1 = np.zeros(num_nodes)
@@ -179,24 +151,17 @@ for trial in np.arange(num_trials):
             scaled_labels1[sampled_rows1[i]
                            ] = labels[sampled_rows1[i]]/scaling_vec1[i]
 
-        # w_exact_lev = normal_equations(exact_lev_A_G, scaled_labels1)
-
-#         print("Exact lev-score-sample weight vector:",w_exact_lev)
-        # MSE_exact_lev = mean_squared_error(labels, w_exact_lev.T @ (data_mat.T @ A_G))
-
-        #  3. EXACT LEV-SCORE SAMPLED GCN------------------------------------------------------------------------------
         s_adj = pygutils.dense_to_sparse(torch.from_numpy(exact_lev_A_G))
         exact_lev_edge_index = s_adj[0]
         exact_lev_edge_weight = s_adj[1]
         test_mask = np.full(num_nodes, False)
         for i in sampled_rows1:
             test_mask[i] = True
+
         MSE_ExactLev_mat[trial, idx] = run_GCN(data_mat, exact_lev_edge_index, exact_lev_edge_weight,
                                                scaled_labels1, test_mask, data_mat, edge_index, edge_weight, labels, hidden_dim, epochs)
 
-        '''MSE via approximate leverage-score sampling via uniform sampling'''
-#         print("Total number of observations of A_G:", budget_vec[idx])
-
+        #  4. APPROX LEV-SCORE SAMPLED GCN------------------------------------------------------------------------------
         A_approx, sampled_idx2 = rank_one_uniform_sampling(
             A_G, data_mat, budget_vec[idx])
         approx_lev_score = lev_approx2(A_approx, 0.6)
@@ -207,23 +172,18 @@ for trial in np.arange(num_trials):
         for i in range(len(sampled_rows2)):
             scaled_labels2[sampled_rows2[i]
                            ] = labels[sampled_rows2[i]]/scaling_vec2[i]
-        # w_approx_lev = normal_equations(approx_lev_data_mat, scaled_labels2)
 
-#         print("Algorithm 2 budget exploitation:", num_samples_uni)
-
-        # MSE_approx_lev = mean_squared_error(labels, w_approx_lev.T @ (data_mat.T @ A_G))
-
-        #  4. APPROX LEV-SCORE SAMPLED GCN------------------------------------------------------------------------------
         s_adj = pygutils.dense_to_sparse(torch.from_numpy(approx_lev_A_G))
         approx_lev_edge_index = s_adj[0]
         approx_lev_edge_weight = s_adj[1]
         test_mask = np.full(num_nodes, False)
         for i in sampled_rows2:
             test_mask[i] = True
+
         MSE_ApproxLev_mat[trial, idx] = run_GCN(data_mat, approx_lev_edge_index, approx_lev_edge_weight,
                                                 scaled_labels2, test_mask, data_mat, edge_index, edge_weight, labels, hidden_dim, epochs)
 
-        '''MSE via approximate leverage-score sampling with minVar'''
+        #  5. APPROX LEV-SCORE MINVAR SAMPLED GCN------------------------------------------------------------------------------
         A_approx_minVar, sampled_idx3 = rank_one_minVar_sampling(
             A_G, data_mat, budget_vec[idx])
         approx_lev_score_minVar = lev_approx2(A_approx_minVar, 0.6)
@@ -234,14 +194,7 @@ for trial in np.arange(num_trials):
         for i in range(len(sampled_rows3)):
             scaled_labels3[sampled_rows3[i]
                            ] = labels[sampled_rows3[i]]/scaling_vec3[i]
-        # w_approx_lev_minVar = normal_equations(approx_lev_data_mat_minVar, scaled_labels3)
 
-#         print("Algorithm 3 budget exploitation:", num_samples_minVar)
-#         print("Approximate norm-based-sample weight vector:", w_approx_norm)
-
-        # MSE_approx_minVar = mean_squared_error(labels, w_approx_lev_minVar.T @ (data_mat.T @ A_G))
-
-        #  5. APPROX LEV-SCORE MINVAR SAMPLED GCN------------------------------------------------------------------------------
         s_adj = pygutils.dense_to_sparse(
             torch.from_numpy(approx_lev_A_G_minVar))
         approx_lev_minvar_edge_index = s_adj[0]
@@ -249,89 +202,75 @@ for trial in np.arange(num_trials):
         test_mask = np.full(num_nodes, False)
         for i in sampled_rows3:
             test_mask[i] = True
+
         MSE_ApproxLev_minVar_mat[trial, idx] = run_GCN(data_mat, approx_lev_minvar_edge_index, approx_lev_minvar_edge_weight,
                                                        scaled_labels3, test_mask, data_mat, edge_index, edge_weight, labels, hidden_dim, epochs)
 
-        '''MSE via GraphSage'''
+        #  6. GraphSage + GCN------------------------------------------------------------------------------
         A_GraphSage, A_mask, col_idx_list = GraphSage(A_G, budget_vec[idx])
         sage_labels = np.zeros(num_nodes)
-
-        #  6. GraphSage + GCN------------------------------------------------------------------------------
         s_adj_sg = pygutils.dense_to_sparse(torch.from_numpy(A_GraphSage))
-
         GraphSage_edge_index = s_adj_sg[0]
         GraphSage_edge_weight = s_adj_sg[1]
-        # for i in sampled_col_idx:
-        #   test_mask[i] = True
         test_mask = np.full(num_nodes, False)
         for i in col_idx_list:
             test_mask[i] = True
             sage_labels[i] = labels[i]
-        # sage_mat = A_mask @ data_mat
 
         MSE_GraphSage_mat[trial, idx] = run_GCN(data_mat, GraphSage_edge_index, GraphSage_edge_weight,
                                                 sage_labels, test_mask, data_mat, edge_index, edge_weight, labels, hidden_dim, epochs)
 
-        '''MSE via GraphSaint'''
+        #  7. GraphSaint + GCN------------------------------------------------------------------------------
         A_GraphSaint, X_GraphSaint, sampled_idx5 = GraphSaint(
             A_G, data_mat, budget_vec[idx])
         saint_labels = np.zeros(num_nodes)
         for i in sampled_idx5:
             saint_labels[i] = labels[i]
-
-        # print(np.shape(A_GraphSaint))
-        # print(np.shape(X_GraphSaint))
-        # print(len(sampled_idx))
-
-        #  7. GraphSaint + GCN------------------------------------------------------------------------------
         s_adj = pygutils.dense_to_sparse(torch.from_numpy(A_GraphSaint))
         GraphSaint_edge_index = s_adj[0]
         GraphSaint_edge_weight = s_adj[1]
-        # test_mask = np.full(num_nodes, False)
-        # for i in sampled_idx5:
-        #   test_mask[i] = True
         test_mask = np.full(num_nodes, True)
+
         MSE_GraphSaint_mat[trial, idx] = run_GCN(X_GraphSaint, GraphSaint_edge_index, GraphSaint_edge_weight,
                                                  saint_labels, test_mask, data_mat, edge_index, edge_weight, labels, hidden_dim, epochs)
 
-# averaging over the number of trials
-'''MSE via full AX'''
+# Average over the number of trials
+'''1. MSE via full AX'''
 mean_MSE_OLS_vec = np.mean((MSE_OLS_mat), axis=0)
 std_MSE_OLS_vec = 1.96*np.std((MSE_OLS_mat), axis=0)/np.sqrt(num_trials)
 
-'''MSE via uniform sampling'''
+'''2. MSE via uniform sampling'''
 mean_MSE_Uniform_vec = np.mean((MSE_Uniform_mat), axis=0)
 std_MSE_Uniform_vec = 1.96 * \
     np.std((MSE_Uniform_mat), axis=0)/np.sqrt(num_trials)
 # print(std_MSE_Uniform_vec)
 
-'''MSE via exact leverage-score sampling'''
+'''3. MSE via exact leverage-score sampling'''
 mean_MSE_ExactLev_vec = np.mean((MSE_ExactLev_mat), axis=0)
 std_MSE_ExactLev_vec = 1.96 * \
     np.std((MSE_ExactLev_mat), axis=0)/np.sqrt(num_trials)
 
-'''MSE via Algorithm 1'''
+'''4. MSE via Algorithm 1'''
 mean_MSE_ApproxLev_vec = np.mean((MSE_ApproxLev_mat), axis=0)
 std_MSE_ApproxLev_vec = 1.96 * \
     np.std((MSE_ApproxLev_mat), axis=0)/np.sqrt(num_trials)
 
-'''MSE via Algorithm 2'''
+'''5. MSE via Algorithm 2'''
 mean_MSE_ApproxLev_minVar_vec = np.mean((MSE_ApproxLev_minVar_mat), axis=0)
 std_MSE_ApproxLev_minVar_vec = 1.96 * \
     np.std((MSE_ApproxLev_minVar_mat), axis=0)/np.sqrt(num_trials)
 
-'''MSE via GraphSage'''
+'''6. MSE via GraphSage'''
 mean_MSE_GraphSage_vec = np.mean((MSE_GraphSage_mat), axis=0)
 std_MSE_GraphSage_vec = 1.96 * \
     np.std((MSE_GraphSage_mat), axis=0)/np.sqrt(num_trials)
 
-'''MSE via GraphSaint'''
+'''7. MSE via GraphSaint'''
 mean_MSE_GraphSaint_vec = np.mean((MSE_GraphSaint_mat), axis=0)
 std_MSE_GraphSaint_vec = 1.96 * \
     np.std((MSE_GraphSaint_mat), axis=0)/np.sqrt(num_trials)
 
-
-# Plotting both the curves simultaneously
+# Plotting all the curves simultaneously
 plt.errorbar(budget_vec_percent, mean_MSE_OLS_vec, yerr=std_MSE_OLS_vec,
              color='tab:green', label='MSE with full $AX$')
 plt.errorbar(budget_vec_percent, mean_MSE_Uniform_vec, yerr=std_MSE_Uniform_vec,
@@ -351,15 +290,7 @@ plt.errorbar(budget_vec_percent, mean_MSE_GraphSaint_vec,
 # Naming the x-axis, y-axis and set the title
 plt.xlabel("Budget (%)")
 plt.ylabel("MSE")
-# plt.title("Top-{} Error plot with {}% budget".format(k, frac*100))
-# plt.title("Error plot with {}% budget".format(frac*100))
 plt.yscale("log")
-
-# plt.ylim([0, 0.15])
-
-# Adding legend, which helps us recognize the curve according to it's color
 plt.legend(loc='upper right')
-
-# display the plot
-plt.savefig('results/'+'nonlinear_'+input+'.svg')
+plt.savefig('results/nonlinear_'+input+'.svg')
 plt.show()

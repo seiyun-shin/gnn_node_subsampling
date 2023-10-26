@@ -488,6 +488,7 @@ def RSE(A_mat, data_mat, labels, w_hat):
     err = numerator / denominator
     return err
 
+
 # RUNNING GCN
 
 
