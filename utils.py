@@ -425,16 +425,16 @@ def generate_dataset(A_mat, mu_X, sigma_X, mu_w, sigma_w, n, p):
     return X, y, w
 
 
-def generate_dataset_syn(A_mat, mu_X, sigma_X, mu_w, sigma_w, n, p):
+def generate_dataset_syn(A_mat, x0_X, gamma_X, x0_w, gamma_w, n, p):
     '''
     Generate a synthetic dataset (linearly-regressed label with an additive perturbation)
 
     Input
         A_mat: n-by-n adjacency matrix A.
-        mu_X: mean of each entry in data matrix
-        sigma_X: std of each entry in data matrix
-        mu_w: mean of weight vector's each entry
-        sigma_w: std of weight vector's each entry
+        x0_X: the location parameter (indicating the location of the peak of the distribution) of each row vector in data matrix
+        gamma_X: the scale parameter (specifying the half-width at half-maximum (HWHM)) of each row vector in data matrix
+        x0_w: the location parameter (indicating the location of the peak of the distribution) of weight vector
+        gamma_w: the scale parameter (specifying the half-width at half-maximum (HWHM)) of weight vector
         n: number of data
         p: data dimension
 
@@ -445,12 +445,12 @@ def generate_dataset_syn(A_mat, mu_X, sigma_X, mu_w, sigma_w, n, p):
     '''
 
     # Generate X as an array of `n` samples having `p` dimension according to Cauchy distribution
-    X = cauchy.rvs(loc=10*mu_X, scale=10*sigma_X, size=(n, p))
+    X = cauchy.rvs(loc=10*x0_X, scale=10*gamma_X, size=(n, p))
     if p == 1:
         X = np.ravel(X)
 
     # Generate w as an array of `p` dimension according to Cauchy distribution
-    w = cauchy.rvs(loc=10*mu_w, scale=10*sigma_w, size=p)
+    w = cauchy.rvs(loc=10*x0_w, scale=10*gamma_w, size=p)
     
     # Generate the random error of n samples, with a random value from a normal distribution, with a standard deviation provided in the function argument
     e = np.random.normal(1, 10, n)
