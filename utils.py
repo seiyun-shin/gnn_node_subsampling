@@ -295,12 +295,12 @@ def lev_score_sampling(A_mat, sketch_size, prob_vec):
     return idx_vec, C_mat, scaling_vec
 
 
-# GRAPHSAGE SAMPLING
+# A SAMPLING SCHEME INSPIRED BY GRAPHSAGE
 
 
 def GraphSage(A_mat, budget):
     '''
-    GraphSage algorithm that selects the neighborhood of feature aggregation for each node.
+    This is a sampling scheme inspired by GraphSage algorithm that selects the neighborhood of feature aggregation for each node.
 
     Input
         A_mat: n-by-n adjacency matrix
@@ -330,12 +330,12 @@ def GraphSage(A_mat, budget):
     return A_partial, A_mask, rand_list
 
 
-# GRAPHSAINT SAMPLING
+#  A SAMPLING SCHEME INSPIRED BY GRAPHSAINT
 
 
 def GraphSaint(A_mat, data_mat, budget):
     '''
-    GraphSaint algorithm that selects the neighborhood of feature aggregation for each node.
+    This is a sampling scheme inspired by GraphSaint algorithm that selects a subgraph
 
     Input
         A_mat: n-by-n adjacency matrix
