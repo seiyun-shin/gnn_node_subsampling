@@ -174,14 +174,14 @@ for trial in np.arange(num_trials):
         MSE_ApproxLev_minVar_mat[trial, idx] = mean_squared_error(
             labels, (A_G @ data_mat) @ w_approx_lev_minVar)
 
-        #  6. GraphSage inspired sampling + GCN------------------------------------------------------------------------------
+        #  6. GraphSage inspired sampling (not the tool itself) + GCN------------------------------------------------------------------------------
         A_GraphSage, sampled_idx4 = GraphSage(A_G, budget_vec[idx])
         sage_labels = deepcopy(labels)
         w_GraphSage = normal_equations(A_GraphSage @ data_mat, sage_labels)
         MSE_GraphSage = mean_squared_error(labels, (A_G @ data_mat) @ w_GraphSage)
         MSE_GraphSage_mat[trial, idx] = MSE_GraphSage
 
-        #  7. GraphSaint inspired sampling + GCN------------------------------------------------------------------------------
+        #  7. GraphSaint inspired sampling (not the tool itself) + GCN------------------------------------------------------------------------------
         A_GraphSaint, X_GraphSaint, sampled_idx5 = GraphSaint(A_G, data_mat, budget_vec[idx])
         saint_labels = labels[sampled_idx5]
         w_GraphSaint = normal_equations(A_GraphSaint @ X_GraphSaint, saint_labels)
@@ -214,12 +214,12 @@ mean_MSE_ApproxLev_minVar_vec = np.mean((MSE_ApproxLev_minVar_mat), axis=0)
 std_MSE_ApproxLev_minVar_vec = 1.96 * \
     np.std((MSE_ApproxLev_minVar_mat), axis=0)/np.sqrt(num_trials)
 
-'''6. MSE via GraphSage based sampling'''
+'''6. MSE via GraphSage inspired sampling'''
 mean_MSE_GraphSage_vec = np.mean((MSE_GraphSage_mat), axis=0)
 std_MSE_GraphSage_vec = 1.96 * \
     np.std((MSE_GraphSage_mat), axis=0)/np.sqrt(num_trials)
 
-'''7. MSE via GraphSaint based sampling'''
+'''7. MSE via GraphSaint inspired sampling'''
 mean_MSE_GraphSaint_vec = np.mean((MSE_GraphSaint_mat), axis=0)
 std_MSE_GraphSaint_vec = 1.96 * \
     np.std((MSE_GraphSaint_mat), axis=0)/np.sqrt(num_trials)
