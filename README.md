@@ -49,7 +49,7 @@ The results are saved in `results` directiory.
 ```
 @inproceedings{shin2023efficient,
   title={Efficient Learning of Linear Graph Neural Networks via Node Subsampling},
-  author={Shin, Seiyun and Zhao, Han and Shomorony, Ilan},
+  author={Shin, Seiyun and Shomorony, Ilan and Zhao, Han},
   booktitle={Thirty-seventh Conference on Neural Information Processing Systems},
   year={2023},
   url={https://openreview.net/forum?id=rQI3FOzo1f}
