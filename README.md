@@ -4,7 +4,7 @@ https://neurips.cc/virtual/2023/poster/70314
 
 ## Summary
 
-<img src="./img/Fig_Two_Step_Alg_rev.png">
+<img src="./imgs/Fig_Two_Step_Alg_rev.png">
 
 ## Dependency
 
