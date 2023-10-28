@@ -224,7 +224,7 @@ for trial in np.arange(num_trials):
         MSE_ApproxLev_minVar_mat[trial, idx] = run_GCN_linear(data_mat, approx_lev_minvar_edge_index, approx_lev_minvar_edge_weight,
                                                               scaled_labels3, test_mask, data_mat, edge_index, edge_weight, labels, hidden_dim, epochs)
 
-        #  6. GraphSage based sampling + GCN------------------------------------------------------------------------------
+        #  6. GraphSage inspired sampling + GCN------------------------------------------------------------------------------
         A_GraphSage, A_mask, col_idx_list = GraphSage(A_G, budget_vec[idx])
         sage_labels = np.zeros(num_nodes)
         s_adj_sg = pygutils.dense_to_sparse(torch.from_numpy(A_GraphSage))
@@ -238,7 +238,7 @@ for trial in np.arange(num_trials):
         MSE_GraphSage_mat[trial, idx] = run_GCN_linear(data_mat, GraphSage_edge_index, GraphSage_edge_weight,
                                                        sage_labels, test_mask, data_mat, edge_index, edge_weight, labels, hidden_dim, epochs)
 
-        #  7. GraphSaint based sampling + GCN------------------------------------------------------------------------------
+        #  7. GraphSaint inspired sampling + GCN------------------------------------------------------------------------------
         A_GraphSaint, X_GraphSaint, sampled_idx5 = GraphSaint(
             A_G, data_mat, budget_vec[idx])
         saint_labels = np.zeros(num_nodes)
@@ -300,9 +300,9 @@ plt.errorbar(budget_vec_percent, mean_MSE_ApproxLev_vec,
 plt.errorbar(budget_vec_percent, mean_MSE_ApproxLev_minVar_vec,
              yerr=std_MSE_ApproxLev_minVar_vec, color='tab:orange', label='MSE via Algorithm 2')
 plt.errorbar(budget_vec_percent, mean_MSE_GraphSage_vec,
-             yerr=std_MSE_GraphSage_vec, color='tab:cyan', label='MSE via GraphSage')
+             yerr=std_MSE_GraphSage_vec, color='tab:cyan', label='MSE via GraphSage inspired sampling')
 plt.errorbar(budget_vec_percent, mean_MSE_GraphSaint_vec,
-             yerr=std_MSE_GraphSaint_vec, color='tab:grey', label='MSE via GraphSaint')
+             yerr=std_MSE_GraphSaint_vec, color='tab:grey', label='MSE via GraphSaint inspired sampling')
 
 
 # Naming the x-axis, y-axis and set the title
