@@ -25,7 +25,7 @@ Please install dependencies by `pip install -r requirements.txt`.
 * ogbl-ddi: https://ogb.stanford.edu/docs/linkprop/#ogbl-ddi
 * ogbn-arxiv: https://ogb.stanford.edu/docs/nodeprop/#ogbn-arxiv
 * facebook: https://snap.stanford.edu/data/ego-Facebook.html
-* generated-data: 
+* Synthetic data: generation according to Gaussian and Cauchy distribution
 
 
 ## Evaluation
