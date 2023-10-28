@@ -174,14 +174,14 @@ for trial in np.arange(num_trials):
         MSE_ApproxLev_minVar_mat[trial, idx] = mean_squared_error(
             labels, (A_G @ data_mat) @ w_approx_lev_minVar)
 
-        #  6. GraphSage based sampling + GCN------------------------------------------------------------------------------
+        #  6. GraphSage inspired sampling + GCN------------------------------------------------------------------------------
         A_GraphSage, sampled_idx4 = GraphSage(A_G, budget_vec[idx])
         sage_labels = deepcopy(labels)
         w_GraphSage = normal_equations(A_GraphSage @ data_mat, sage_labels)
         MSE_GraphSage = mean_squared_error(labels, (A_G @ data_mat) @ w_GraphSage)
         MSE_GraphSage_mat[trial, idx] = MSE_GraphSage
 
-        #  7. GraphSaint based sampling + GCN------------------------------------------------------------------------------
+        #  7. GraphSaint inspired sampling + GCN------------------------------------------------------------------------------
         A_GraphSaint, X_GraphSaint, sampled_idx5 = GraphSaint(A_G, data_mat, budget_vec[idx])
         saint_labels = labels[sampled_idx5]
         w_GraphSaint = normal_equations(A_GraphSaint @ X_GraphSaint, saint_labels)
@@ -236,9 +236,9 @@ plt.errorbar(budget_vec_percent, mean_MSE_ApproxLev_vec,
 plt.errorbar(budget_vec_percent, mean_MSE_ApproxLev_minVar_vec,
              yerr=std_MSE_ApproxLev_minVar_vec, color='tab:orange', label='MSE via Algorithm 2')
 plt.errorbar(budget_vec_percent, mean_MSE_GraphSage_vec,
-             yerr=std_MSE_GraphSage_vec, color='tab:cyan', label='MSE via GraphSage')
+             yerr=std_MSE_GraphSage_vec, color='tab:cyan', label='MSE via GraphSage inspired sampling')
 plt.errorbar(budget_vec_percent, mean_MSE_GraphSaint_vec,
-             yerr=std_MSE_GraphSaint_vec, color='tab:grey', label='MSE via GraphSaint')
+             yerr=std_MSE_GraphSaint_vec, color='tab:grey', label='MSE via GraphSaint inspired sampling')
 
 
 # Naming the x-axis, y-axis and set the title
