@@ -47,10 +47,11 @@ The results are saved in `results` directiory.
 ## Citation
 
 ```
-@inproceedings{shin2023efflineargnn,
+@inproceedings{shin2023efficient,
   title={Efficient Learning of Linear Graph Neural Networks via Node Subsampling},
   author={Shin, Seiyun and Zhao, Han and Shomorony, Ilan},
-  booktitle={Proceedings of the 37th Advances in Neural Information Processing Systems (NeurIPS)},
-  year={2023}
+  booktitle={Thirty-seventh Conference on Neural Information Processing Systems},
+  year={2023},
+  url={https://openreview.net/forum?id=rQI3FOzo1f}
 }
 ```
