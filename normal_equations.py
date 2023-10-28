@@ -4,7 +4,7 @@ from ogb.nodeproppred import NodePropPredDataset
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import r2_score
 from timeit import default_timer as timer
-from utils import normal_equations, normalize_adj, uniform_sampling_rows, rank_one_uniform_sampling, rank_one_minVar_sampling,\
+from utils import normal_equations, normalize_adj, uniform_sampling_rows, normal_uniform_sampling_rows, rank_one_uniform_sampling, rank_one_minVar_sampling,\
     lev_exact, lev_approx2, lev_score_sampling, GraphSage, GraphSaint, generate_dataset, generate_dataset_syn,\
     run_GCN_linear
 import ogb
@@ -20,7 +20,7 @@ import torch.optim as optim
 
 
 error_msg = "Usage: python " + __file__ + \
-    "(dataset: house|ogbl-ddi|ogbn-arxiv|generated-data|facebook)"
+    "(dataset: house|ogbl-ddi|facebook)"
 if len(sys.argv) != 2:
     print(error_msg)
     sys.exit()
@@ -59,13 +59,6 @@ elif input == "ogbn-arxiv":
     X = graph["node_feat"]
     y = label
 
-elif input == "generated-data":
-    num_nodes = [50000, 100000, 150000]
-    p = 500
-    num_nodes = num_nodes[0]
-    A_G = np.random.normal(1, 1, size=(num_nodes, num_nodes))
-    X, y, w = generate_dataset(A_G, 1, 1, 1, 1, num_nodes, p)
-
 elif input == "facebook":
     B = np.zeros((4039, 4039))
     f = open("dataset/facebook/facebook_combined.txt", 'r')
@@ -79,7 +72,6 @@ elif input == "facebook":
     f.close()
     A_G = sp.csr_array(np.maximum(B, B.T))
     num_nodes = A_G.shape[0]
-    # A_G = normalize_adj(A_G)
     A_G = A_G.toarray()
     X, y, w = generate_dataset_syn(A_G, 1, 10, 1, 10, num_nodes, 100)
     X = X/np.linalg.norm(X)
@@ -93,7 +85,7 @@ else:
 '''Hyperparameters'''
 hidden_dim = 32
 epochs = 300
-num_trials = 10
+num_trials = 1
 tot_budget_vec = np.array(
     [0.003, 0.005, 0.007, 0.01, 0.03, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7])
 
@@ -122,13 +114,8 @@ MSE_ApproxLev_minVar_mat = np.zeros((num_trials, len_budget))
 MSE_GraphSage_mat = np.zeros((num_trials, len_budget))
 MSE_GraphSaint_mat = np.zeros((num_trials, len_budget))
 
-
-s_adj = pygutils.dense_to_sparse(torch.from_numpy(A_G))
-edge_index = s_adj[0]
-edge_weight = s_adj[1]
-test_mask = np.full(num_nodes, True)
-MSE_OLS = run_GCN_linear(data_mat, edge_index, edge_weight, labels, test_mask,
-                         data_mat, edge_index, edge_weight, labels, hidden_dim, epochs)
+w_ori = normal_equations(A_G @ data_mat, labels)
+MSE_OLS = mean_squared_error(labels, (A_G @ data_mat) @ w_ori)
 
 '''compute the exact leverage score'''
 exact_lev_score = lev_exact(A_G @ data_mat)
@@ -138,7 +125,7 @@ budget_vec_original = np.multiply(tot_budget_vec, 1)
 
 # Assign variables to the y-axis part of the curve
 for trial in np.arange(num_trials):
-    print("Trial : " + str(trial))
+    print("Trial : " + str(trial+1))
 
     for idx in idx_vec:
         print("Budget : " + str(idx) + " " +
@@ -149,22 +136,20 @@ for trial in np.arange(num_trials):
         MSE_OLS_mat[trial, idx] = MSE_OLS
 
         #  2. UNI SAMPLED GCN------------------------------------------------------------------------------
-        A_uni_sampled, sampled_idx = uniform_sampling_rows(
+        A_uni_sampled, sampled_idx = normal_uniform_sampling_rows(
             A_G, tot_budget_vec[idx])
-        w_uni = normal_equations(A_uni_sampled[sampled_idx, :] @ data_mat, labels[sampled_idx])
-        MSE_Uniform_mat[trial, idx] = mean_squared_error(labels, w_uni.T @ (data_mat.T @ A_G))
+        w_uni = normal_equations(
+            A_uni_sampled @ data_mat, labels[sampled_idx])
+        MSE_Uniform_mat[trial, idx] = mean_squared_error(
+            labels, (A_G @ data_mat) @ w_uni)
 
         #  3. EXACT LEV-SCORE SAMPLED GCN------------------------------------------------------------------------------
         sampled_rows1, exact_lev_A_G, scaling_vec1 = lev_score_sampling(
             A_G, sketch_size_vec[idx], exact_lev_score)
-        
-        scaled_labels1 = np.zeros(num_nodes)
-        for i in range(len(sampled_rows1)):
-            scaled_labels1[sampled_rows1[i]
-                           ] = labels[sampled_rows1[i]]/scaling_vec1[i]
-
-        w_exact_lev = normal_equations(exact_lev_A_G, scaled_labels1)
-        MSE_ExactLev_mat[trial, idx] = mean_squared_error(labels, w_exact_lev.T @ (data_mat.T @ A_G))
+        scaled_labels1 = labels[sampled_rows1] / scaling_vec1
+        w_exact_lev = normal_equations(exact_lev_A_G @ data_mat, scaled_labels1)
+        MSE_ExactLev_mat[trial, idx] = mean_squared_error(
+            labels, (A_G @ data_mat) @ w_exact_lev)
 
         #  4. APPROX LEV-SCORE SAMPLED GCN------------------------------------------------------------------------------
         A_approx, sampled_idx2 = rank_one_uniform_sampling(
@@ -172,14 +157,10 @@ for trial in np.arange(num_trials):
         approx_lev_score = lev_approx2(A_approx, 0.6)
         sampled_rows2, approx_lev_A_G, scaling_vec2 = lev_score_sampling(
             A_G, sketch_size_vec[idx], approx_lev_score)
-
-        scaled_labels2 = np.zeros(num_nodes)
-        for i in range(len(sampled_rows2)):
-            scaled_labels2[sampled_rows2[i]
-                           ] = labels[sampled_rows2[i]]/scaling_vec2[i]
-
-        w_approx_lev = normal_equations(approx_lev_A_G, scaled_labels2)
-        MSE_ApproxLev_mat[trial, idx] = mean_squared_error(labels, w_approx_lev.T @ (data_mat.T @ A_G))
+        scaled_labels2 = labels[sampled_rows2] / scaling_vec2
+        w_approx_lev = normal_equations(approx_lev_A_G @ data_mat, scaled_labels2)
+        MSE_ApproxLev_mat[trial, idx] = mean_squared_error(
+            labels, (A_G @ data_mat) @ w_approx_lev)
 
         #  5. APPROX LEV-SCORE MINVAR SAMPLED GCN------------------------------------------------------------------------------
         A_approx_minVar, sampled_idx3 = rank_one_minVar_sampling(
@@ -187,42 +168,25 @@ for trial in np.arange(num_trials):
         approx_lev_score_minVar = lev_approx2(A_approx_minVar, 0.6)
         sampled_rows3, approx_lev_A_G_minVar, scaling_vec3 = lev_score_sampling(
             A_G, sketch_size_vec[idx], approx_lev_score_minVar)
-
-        scaled_labels3 = np.zeros(num_nodes)
-        for i in range(len(sampled_rows3)):
-            scaled_labels3[sampled_rows3[i]
-                           ] = labels[sampled_rows3[i]]/scaling_vec3[i]
-            
-        w_approx_lev_minVar = normal_equations(approx_lev_A_G_minVar, scaled_labels3)
-        MSE_ApproxLev_minVar_mat[trial, idx] = mean_squared_error(labels, w_approx_lev_minVar.T @ (data_mat.T @ A_G))
+        scaled_labels3 = labels[sampled_rows3] / scaling_vec3
+        w_approx_lev_minVar = normal_equations(
+            approx_lev_A_G_minVar @ data_mat, scaled_labels3)
+        MSE_ApproxLev_minVar_mat[trial, idx] = mean_squared_error(
+            labels, (A_G @ data_mat) @ w_approx_lev_minVar)
 
         #  6. GraphSage based sampling + GCN------------------------------------------------------------------------------
-        A_GraphSage, A_mask, col_idx_list = GraphSage(A_G, budget_vec[idx])
-        sage_labels = np.zeros(num_nodes)
-        s_adj_sg = pygutils.dense_to_sparse(torch.from_numpy(A_GraphSage))
-        GraphSage_edge_index = s_adj_sg[0]
-        GraphSage_edge_weight = s_adj_sg[1]
-        test_mask = np.full(num_nodes, False)
-        for i in col_idx_list:
-            test_mask[i] = True
-            sage_labels[i] = labels[i]
-
-        MSE_GraphSage_mat[trial, idx] = run_GCN_linear(data_mat, GraphSage_edge_index, GraphSage_edge_weight,
-                                                       sage_labels, test_mask, data_mat, edge_index, edge_weight, labels, hidden_dim, epochs)
+        A_GraphSage, sampled_idx4 = GraphSage(A_G, budget_vec[idx])
+        sage_labels = deepcopy(labels)
+        w_GraphSage = normal_equations(A_GraphSage @ data_mat, sage_labels)
+        MSE_GraphSage = mean_squared_error(labels, (A_G @ data_mat) @ w_GraphSage)
+        MSE_GraphSage_mat[trial, idx] = MSE_GraphSage
 
         #  7. GraphSaint based sampling + GCN------------------------------------------------------------------------------
-        A_GraphSaint, X_GraphSaint, sampled_idx5 = GraphSaint(
-            A_G, data_mat, budget_vec[idx])
-        saint_labels = np.zeros(num_nodes)
-        for i in sampled_idx5:
-            saint_labels[i] = labels[i]
-        s_adj = pygutils.dense_to_sparse(torch.from_numpy(A_GraphSaint))
-        GraphSaint_edge_index = s_adj[0]
-        GraphSaint_edge_weight = s_adj[1]
-        test_mask = np.full(num_nodes, True)
+        A_GraphSaint, X_GraphSaint, sampled_idx5 = GraphSaint(A_G, data_mat, budget_vec[idx])
+        saint_labels = labels[sampled_idx5]
+        w_GraphSaint = normal_equations(A_GraphSaint @ X_GraphSaint, saint_labels)
+        MSE_GraphSaint_mat[trial, idx] = mean_squared_error(labels, (A_G @ data_mat) @ w_GraphSaint)
 
-        MSE_GraphSaint_mat[trial, idx] = run_GCN_linear(X_GraphSaint, GraphSaint_edge_index, GraphSaint_edge_weight,
-                                                        saint_labels, test_mask, data_mat, edge_index, edge_weight, labels, hidden_dim, epochs)
 
 # Average over the number of trials
 '''1. MSE via full AX'''

@@ -94,6 +94,27 @@ def uniform_sampling_rows(A_mat, budget):
     A_partial = np.multiply(A_mat, A_mask)
     return A_partial, sampled_row_list
 
+def normal_uniform_sampling_rows(A_mat, budget):
+    '''
+    Uniform Sampling of rows on the graph adjacency matrix
+    
+    Input
+        A_mat: n-by-n adjacency matrix
+        budget: number of total sampled entries (observation)
+    
+    Output
+        A_partial: n-by-n partially observed adjacency matrix
+    '''
+
+    n = A_mat.shape[0]
+    num_rows = np.floor(min(budget, n ** 2)/n) + 1
+    num_rows = num_rows.astype(int)
+
+    sampled_row_list = list(np.random.choice(np.arange(n), size=num_rows, replace = False))
+    
+    A_partial = A_mat[sampled_row_list, :]
+    
+    return A_partial, sampled_row_list
 
 # ALGORITHM 1
 
@@ -300,7 +321,7 @@ def lev_score_sampling(A_mat, sketch_size, prob_vec):
 
 def GraphSage(A_mat, budget):
     '''
-    This is a sampling scheme inspired by GraphSage algorithm that selects the neighborhood of feature aggregation for each node.
+    GraphSage algorithm that selects the neighborhood of feature aggregation for each node.
 
     Input
         A_mat: n-by-n adjacency matrix
@@ -311,7 +332,7 @@ def GraphSage(A_mat, budget):
     '''
 
     n = A_mat.shape[0]
-    num_cols = np.floor(min(budget, n ** 2)/n)
+    num_cols = np.floor(min(budget, n ** 2)/n) + 1
     num_cols = num_cols.astype(int)
     col_list = []
     A_mask = np.zeros((A_mat.shape[0], A_mat.shape[1]))
@@ -327,7 +348,7 @@ def GraphSage(A_mat, budget):
     rand_list = list(np.random.choice(
         np.arange(n), size=num_cols, replace=False))
     rand_list = np.random.choice(col_list, size=num_cols, replace=False)
-    return A_partial, A_mask, rand_list
+    return A_partial, rand_list
 
 
 #  A SAMPLING SCHEME INSPIRED BY GRAPHSAINT
@@ -335,7 +356,7 @@ def GraphSage(A_mat, budget):
 
 def GraphSaint(A_mat, data_mat, budget):
     '''
-    This is a sampling scheme inspired by GraphSaint algorithm that selects a subgraph
+    GraphSaint algorithm that selects the neighborhood of feature aggregation for each node.
 
     Input
         A_mat: n-by-n adjacency matrix
@@ -346,11 +367,9 @@ def GraphSaint(A_mat, data_mat, budget):
     '''
 
     n = A_mat.shape[0]
-    p = data_mat.shape[1]
-    num_cols = np.floor(min(budget, n ** 2)/n)
+    num_cols = np.floor(min(budget, n ** 2)/n) + 1
     num_cols = num_cols.astype(int)
-    A_mask = np.zeros((n, n))
-    X_mask = np.zeros((n, p))
+
     sampling_prob = np.zeros(n)
 
     for idx in range(n):
@@ -359,14 +378,15 @@ def GraphSaint(A_mat, data_mat, budget):
     sampling_prob /= np.sum(sampling_prob)
     sampled_list = list(np.random.choice(
         np.arange(n), size=num_cols, p=sampling_prob, replace=False))
+    A_subgraph = np.zeros((len(sampled_list), len(sampled_list)))
 
-    for idx1 in sampled_list:
-        for idx2 in sampled_list:
-            A_mask[idx1][idx2] = 1
-        X_mask[idx1, :] = 1
+    for idx1 in range(len(sampled_list)):
+        for idx2 in range(len(sampled_list)):
+            A_subgraph[idx1][idx2] = A_mat[sampled_list[idx1]
+                                           ][sampled_list[idx2]]
 
-    A_subgraph = np.multiply(A_mat, A_mask)
-    X_subgraph = np.multiply(data_mat, X_mask)
+    X_subgraph = data_mat[sampled_list, :]
+
     return A_subgraph, X_subgraph, sampled_list
 
 
@@ -414,7 +434,7 @@ def generate_dataset(A_mat, mu_X, sigma_X, mu_w, sigma_w, n, p):
     # Generate w as an array of `p` dimension according to Gaussian distribution
     w = np.random.normal(mu_w, sigma_w, p)  # X.shape[1] in general
     w /= np.linalg.norm(w)
-    
+
     # Generate the random error of n samples, with a random value from a normal distribution, with a standard deviation provided in the function argument
     e = np.random.randn(n) * 1000
     # Calculate `y` according to the equation discussed
@@ -451,7 +471,7 @@ def generate_dataset_syn(A_mat, x0_X, gamma_X, x0_w, gamma_w, n, p):
 
     # Generate w as an array of `p` dimension according to Cauchy distribution
     w = cauchy.rvs(loc=10*x0_w, scale=10*gamma_w, size=p)
-    
+
     # Generate the random error of n samples, with a random value from a normal distribution, with a standard deviation provided in the function argument
     e = np.random.normal(1, 10, n)
     # Calculate `y` according to the equation discussed

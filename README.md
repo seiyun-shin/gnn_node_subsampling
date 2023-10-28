@@ -4,7 +4,7 @@ https://neurips.cc/virtual/2023/poster/70314
 
 ## Summary
 
-
+<img src="./img/Fig_Two_Step_Alg_rev.png">
 
 ## Dependency
 
@@ -14,10 +14,10 @@ Please install dependencies by `pip install -r requirements.txt`.
 
 ## Files
 
-* `runtime_and_memory_comparison.py` should run with memory_profiler and reproduces computation time and peak memory comparison among full AX .
-* `linear_gnn_subsampling.py` reproduces linear mse on datasets: house, ogbl-ddi, ogbn-arxiv, facebook, or generated datasets.
-* `nonlinear_gnn_subsampling.py` reproduces nonlinear mse on datasets: house, ogbl-ddi, ogbn-arxiv, or generated datasets.
-* `utils.py` defines GCN model, sampling methods,  when evaluating different datasets.
+* `runtime_and_memory_comparison.py` should run with memory_profiler and reproduces computation time and peak memory comparison between full AX and sampled AX under different sampling methods.
+* `nonlinear_gnn_subsampling.py` reproduces nonlinear mse on datasets: house or ogbl-ddi datasets.
+* `normal_equations.py` reproduces linear mse by normal equations on datasets: house, ogbl-ddi, facebook.
+* `utils.py` defines GCN model, sampling methods when evaluating different datasets.
 
 ## Datasets
 
@@ -33,9 +33,9 @@ Please install dependencies by `pip install -r requirements.txt`.
 Reproduce the results by the following commands.
 
 ```
-$ python memory_profiler -m runtime_and_memory_comparison.py (dataset: house|ogbl-ddi|ogbn-arxiv|generated-data)
-$ python linear_gnn_subampling.py (dataset: house|ogbl-ddi|ogbn-arxiv|generated-data)
-$ python nonlinear_gnn_subsampling.py (dataset: house|ogbl-ddi|ogbn-arxiv|generated-data|facebook)
+$ python memory_profiler -m runtime_and_memory_comparison.py (dataset: house|ogbl-ddi|ogbn-arxiv|generated-data|facebook)
+$ python nonlinear_gnn_subsampling.py (dataset: house|ogbl-ddi)
+$ python normal_equations.py (dataset: house|ogbl-ddi|facebook)
 ```
 
 The results are saved in `results` directiory.

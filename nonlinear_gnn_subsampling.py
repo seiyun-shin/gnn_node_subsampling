@@ -20,7 +20,7 @@ import torch.optim as optim
 
 
 error_msg = "Usage: python " + __file__ + \
-    "(dataset: house|ogbl-ddi|ogbn-arxiv|generated-data)"
+    "(dataset: house|ogbl-ddi)"
 if len(sys.argv) != 2:
     print(error_msg)
     sys.exit()
@@ -118,7 +118,7 @@ budget_vec_original = np.multiply(tot_budget_vec, 1)
 
 # Assign variables to the y-axis part of the curve
 for trial in np.arange(num_trials):
-    print("Trial : " + str(trial))
+    print("Trial : " + str(trial+1))
 
     for idx in idx_vec:
         print("Budget : " + str(idx) + " " +
@@ -207,13 +207,13 @@ for trial in np.arange(num_trials):
                                                        scaled_labels3, test_mask, data_mat, edge_index, edge_weight, labels, hidden_dim, epochs)
 
         #  6. GraphSage based sampling + GCN------------------------------------------------------------------------------
-        A_GraphSage, A_mask, col_idx_list = GraphSage(A_G, budget_vec[idx])
+        A_GraphSage, sampled_idx4 = GraphSage(A_G, budget_vec[idx])
         sage_labels = np.zeros(num_nodes)
         s_adj_sg = pygutils.dense_to_sparse(torch.from_numpy(A_GraphSage))
         GraphSage_edge_index = s_adj_sg[0]
         GraphSage_edge_weight = s_adj_sg[1]
         test_mask = np.full(num_nodes, False)
-        for i in col_idx_list:
+        for i in sampled_idx4:
             test_mask[i] = True
             sage_labels[i] = labels[i]
 

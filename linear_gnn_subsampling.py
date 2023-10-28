@@ -33,7 +33,6 @@ if input == "house":
     range_start = 15500
     range_end = 16500
     A_G = A_G[range_start:range_end, range_start:range_end]
-    A_G = normalize_adj(A_G)
     A_G = A_G.toarray()
     X = X[range_start:range_end]
     X = X/np.linalg.norm(X)
@@ -79,7 +78,6 @@ elif input == "facebook":
     f.close()
     A_G = sp.csr_array(np.maximum(B, B.T))
     num_nodes = A_G.shape[0]
-    # A_G = normalize_adj(A_G)
     A_G = A_G.toarray()
     X, y, w = generate_dataset_syn(A_G, 1, 10, 1, 10, num_nodes, 100)
     X = X/np.linalg.norm(X)
@@ -138,7 +136,7 @@ budget_vec_original = np.multiply(tot_budget_vec, 1)
 
 # Assign variables to the y-axis part of the curve
 for trial in np.arange(num_trials):
-    print("Trial : " + str(trial))
+    print("Trial : " + str(trial+1))
 
     for idx in idx_vec:
         print("Budget : " + str(idx) + " " +
